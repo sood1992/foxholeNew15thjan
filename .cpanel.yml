@@ -4,20 +4,16 @@ deployment:
     # Set deployment path - crew.neofox.live subdomain directory
     - export DEPLOYPATH=/home2/sunburni/public_html/crewneofox
 
-    # Install dependencies and build
-    - /bin/npm install --production=false
-    - /bin/npm run build
-
     # Create deployment directory if it doesn't exist
     - /bin/mkdir -p $DEPLOYPATH
 
     # Clear old files in deployment directory (except .htaccess)
     - /bin/find $DEPLOYPATH -mindepth 1 ! -name '.htaccess' -delete 2>/dev/null || true
 
-    # Copy built files to deployment directory
+    # Copy pre-built files to deployment directory (build done locally, committed to repo)
     - /bin/cp -R dist/* $DEPLOYPATH/
 
-    # Copy .htaccess for routing (minimal version)
+    # Copy .htaccess for routing
     - /bin/cp public/.htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
 
     # Copy test files for debugging

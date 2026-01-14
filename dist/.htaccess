@@ -1,0 +1,15 @@
+# Minimal .htaccess for Bluehost
+DirectoryIndex index.html
+
+# MIME types
+AddType application/javascript .js
+AddType text/css .css
+
+# SPA routing
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.html [L]
+</IfModule>
