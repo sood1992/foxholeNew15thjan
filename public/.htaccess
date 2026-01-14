@@ -26,6 +26,12 @@
   RewriteEngine On
   RewriteBase /
 
+  # Don't rewrite the PHP file itself
+  RewriteRule ^serve\.php$ - [L]
+
+  # Route JS and CSS files through PHP for correct MIME type (Bluehost fix)
+  RewriteRule ^assets/(.+)\.(js|css)$ serve.php [L]
+
   # Handle Authorization Header
   RewriteCond %{HTTP:Authorization} .
   RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
