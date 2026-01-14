@@ -1,3 +1,13 @@
+# Fix MIME types for JavaScript and CSS (required for some shared hosts)
+AddType application/javascript .js .mjs
+AddType text/javascript .js .mjs
+AddType text/css .css
+AddType image/svg+xml .svg .svgz
+AddType application/json .json
+AddType text/html .html .htm
+AddType font/woff .woff
+AddType font/woff2 .woff2
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
