@@ -1,50 +1,14 @@
-# Fix MIME types for JavaScript and CSS (required for some shared hosts)
-<IfModule mod_mime.c>
-  AddType application/javascript .js
-  AddType text/javascript .js
-  AddType text/css .css
-  AddType image/svg+xml .svg
-  AddType application/json .json
-</IfModule>
-
-# Force correct MIME type for JS files
-<FilesMatch "\.js$">
-  ForceType application/javascript
-  Header set Content-Type "application/javascript"
-</FilesMatch>
-
-<FilesMatch "\.css$">
-  ForceType text/css
-  Header set Content-Type "text/css"
-</FilesMatch>
-
-<FilesMatch "\.svg$">
-  ForceType image/svg+xml
-</FilesMatch>
+# Route ALL requests through PHP for correct MIME types (Bluehost fix)
+DirectoryIndex index.php index.html
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Don't rewrite the PHP file itself
-  RewriteRule ^serve\.php$ - [L]
-
-  # Route JS and CSS files through PHP for correct MIME type (Bluehost fix)
-  RewriteRule ^assets/(.+)\.(js|css)$ serve.php [L]
-
-  # Handle Authorization Header
-  RewriteCond %{HTTP:Authorization} .
-  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-  # Redirect Trailing Slashes If Not A Folder
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_URI} (.+)/$
-  RewriteRule ^ %1 [L,R=301]
-
-  # Handle Front Controller (SPA routing)
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteRule ^ index.html [L]
+  # Route everything through index.php
+  RewriteCond %{REQUEST_FILENAME} !-f [OR]
+  RewriteCond %{REQUEST_URI} \.(js|css)$
+  RewriteRule ^(.*)$ index.php [L,QSA]
 </IfModule>
 
 # Enable GZIP compression

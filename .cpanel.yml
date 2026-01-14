@@ -17,11 +17,8 @@ deployment:
     # Copy built files to deployment directory
     - /bin/cp -R dist/* $DEPLOYPATH/
 
-    # Copy .htaccess for SPA routing
+    # Copy .htaccess for routing
     - /bin/cp public/.htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
 
-    # Copy PHP MIME type handler (Bluehost fix)
-    - /bin/cp public/serve.php $DEPLOYPATH/serve.php 2>/dev/null || true
-
-    # Copy assets .htaccess for MIME types
-    - /bin/cp public/assets/.htaccess $DEPLOYPATH/assets/.htaccess 2>/dev/null || true
+    # Copy PHP entry point (serves files with correct MIME types)
+    - /bin/cp public/index.php $DEPLOYPATH/index.php 2>/dev/null || true
