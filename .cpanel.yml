@@ -1,0 +1,18 @@
+---
+deployment:
+  tasks:
+    # Set deployment path - Update this to match your cPanel directory
+    - export DEPLOYPATH=/home/neofox/public_html/foxhole
+
+    # Install dependencies and build
+    - /bin/npm install --production=false
+    - /bin/npm run build
+
+    # Clear old files in deployment directory (except .htaccess)
+    - /bin/find $DEPLOYPATH -mindepth 1 ! -name '.htaccess' -delete 2>/dev/null || true
+
+    # Copy built files to deployment directory
+    - /bin/cp -R dist/* $DEPLOYPATH/
+
+    # Copy .htaccess for SPA routing
+    - /bin/cp public/.htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
