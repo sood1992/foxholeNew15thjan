@@ -2,11 +2,7 @@
 deployment:
   tasks:
     # Set deployment path - crew.neofox.live subdomain directory
-    # Common cPanel paths for subdomains:
-    # - /home/neofox/crew.neofox.live
-    # - /home/neofox/public_html/crew
-    # Update DEPLOYPATH to match your actual subdomain document root
-    - export DEPLOYPATH=/home/neofox/crew.neofox.live
+    - export DEPLOYPATH=/home/neofox/public_html/crewneofox
 
     # Install dependencies and build
     - /bin/npm install --production=false
