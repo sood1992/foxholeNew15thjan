@@ -1,12 +1,19 @@
 ---
 deployment:
   tasks:
-    # Set deployment path - Update this to match your cPanel directory
-    - export DEPLOYPATH=/home/neofox/public_html/foxhole
+    # Set deployment path - crew.neofox.live subdomain directory
+    # Common cPanel paths for subdomains:
+    # - /home/neofox/crew.neofox.live
+    # - /home/neofox/public_html/crew
+    # Update DEPLOYPATH to match your actual subdomain document root
+    - export DEPLOYPATH=/home/neofox/crew.neofox.live
 
     # Install dependencies and build
     - /bin/npm install --production=false
     - /bin/npm run build
+
+    # Create deployment directory if it doesn't exist
+    - /bin/mkdir -p $DEPLOYPATH
 
     # Clear old files in deployment directory (except .htaccess)
     - /bin/find $DEPLOYPATH -mindepth 1 ! -name '.htaccess' -delete 2>/dev/null || true

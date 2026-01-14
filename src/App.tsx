@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Layout } from './components/layout';
+import ErrorBoundary from './components/ErrorBoundary';
 import {
   Login,
   Dashboard,
@@ -60,11 +61,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AppProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 
