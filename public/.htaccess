@@ -1,14 +1,56 @@
-# Route ALL requests through PHP for correct MIME types (Bluehost fix)
-DirectoryIndex index.php index.html
+# Foxhole - Apache Configuration for Bluehost
+# Force correct MIME types for JavaScript and CSS
 
+# Disable MultiViews to prevent content negotiation issues
+Options -MultiViews
+
+# Set default charset
+AddDefaultCharset UTF-8
+
+# CRITICAL: Force MIME types for JavaScript files
+<IfModule mod_mime.c>
+  # Remove any existing handlers for JS files
+  RemoveType .js .mjs .cjs
+  RemoveHandler .js .mjs .cjs
+
+  # Force correct MIME types
+  AddType application/javascript .js
+  AddType application/javascript .mjs
+  AddType application/javascript .cjs
+  AddType text/css .css
+  AddType text/html .html .htm
+  AddType application/json .json
+  AddType image/svg+xml .svg
+  AddType font/woff .woff
+  AddType font/woff2 .woff2
+</IfModule>
+
+# Force MIME type for all files in assets directory
+<FilesMatch "\.(js|mjs)$">
+  ForceType application/javascript
+  Header set Content-Type "application/javascript; charset=utf-8"
+</FilesMatch>
+
+<FilesMatch "\.css$">
+  ForceType text/css
+  Header set Content-Type "text/css; charset=utf-8"
+</FilesMatch>
+
+# DirectoryIndex - serve index.html by default
+DirectoryIndex index.html
+
+# Rewrite rules for SPA routing
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Route everything through index.php
-  RewriteCond %{REQUEST_FILENAME} !-f [OR]
-  RewriteCond %{REQUEST_URI} \.(js|css)$
-  RewriteRule ^(.*)$ index.php [L,QSA]
+  # Don't rewrite existing files and directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Rewrite everything else to index.html for SPA routing
+  RewriteRule ^ index.html [L]
 </IfModule>
 
 # Enable GZIP compression
@@ -29,14 +71,14 @@ DirectoryIndex index.php index.html
   ExpiresByType text/html "access plus 1 day"
 </IfModule>
 
-# Security headers (nosniff REMOVED - was causing MIME type issues)
+# Security headers (excluding nosniff which causes MIME issues)
 <IfModule mod_headers.c>
   Header set X-Frame-Options "SAMEORIGIN"
   Header set X-XSS-Protection "1; mode=block"
 </IfModule>
 
-# LiteSpeed specific (many cPanel hosts use LiteSpeed)
+# LiteSpeed specific settings
 <IfModule LiteSpeed>
-  AddType application/javascript .js
+  AddType application/javascript .js .mjs
   AddType text/css .css
 </IfModule>

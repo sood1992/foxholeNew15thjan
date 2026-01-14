@@ -20,5 +20,16 @@ deployment:
     # Copy .htaccess for routing
     - /bin/cp public/.htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
 
+    # Copy assets .htaccess for MIME types
+    - /bin/mkdir -p $DEPLOYPATH/assets
+    - /bin/cp public/assets/.htaccess $DEPLOYPATH/assets/.htaccess 2>/dev/null || true
+
     # Copy PHP entry point (serves files with correct MIME types)
     - /bin/cp public/index.php $DEPLOYPATH/index.php 2>/dev/null || true
+
+    # Copy test files for debugging
+    - /bin/cp public/test.php $DEPLOYPATH/test.php 2>/dev/null || true
+    - /bin/cp public/test-simple.html $DEPLOYPATH/test-simple.html 2>/dev/null || true
+
+    # Copy serve.php as backup
+    - /bin/cp public/serve.php $DEPLOYPATH/serve.php 2>/dev/null || true
