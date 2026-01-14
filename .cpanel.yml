@@ -2,7 +2,7 @@
 deployment:
   tasks:
     # Set deployment path - crew.neofox.live subdomain directory
-    - export DEPLOYPATH=/home/neofox/public_html/crewneofox
+    - export DEPLOYPATH=/home2/sunburni/public_html/crewneofox
 
     # Install dependencies and build
     - /bin/npm install --production=false
