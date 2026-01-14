@@ -7,15 +7,9 @@ deployment:
     # Create deployment directory if it doesn't exist
     - /bin/mkdir -p $DEPLOYPATH
 
-    # Clear old files in deployment directory (except .htaccess)
-    - /bin/find $DEPLOYPATH -mindepth 1 ! -name '.htaccess' -delete 2>/dev/null || true
+    # Clear ALL old files including .htaccess (fresh deploy)
+    - /bin/rm -rf $DEPLOYPATH/* $DEPLOYPATH/.htaccess 2>/dev/null || true
 
-    # Copy pre-built files to deployment directory (build done locally, committed to repo)
+    # Copy pre-built files to deployment directory (includes .htaccess and index.php)
     - /bin/cp -R dist/* $DEPLOYPATH/
-
-    # Copy .htaccess for routing
-    - /bin/cp public/.htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
-
-    # Copy test files for debugging
-    - /bin/cp public/test.php $DEPLOYPATH/test.php 2>/dev/null || true
-    - /bin/cp public/test-simple.html $DEPLOYPATH/test-simple.html 2>/dev/null || true
+    - /bin/cp dist/.htaccess $DEPLOYPATH/.htaccess
