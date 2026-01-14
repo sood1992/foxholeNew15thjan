@@ -1,0 +1,20 @@
+# Force correct MIME types for assets
+AddType application/javascript .js
+AddType text/javascript .js
+AddType text/css .css
+
+<FilesMatch "\.js$">
+  ForceType application/javascript
+  Header set Content-Type "application/javascript; charset=utf-8"
+</FilesMatch>
+
+<FilesMatch "\.css$">
+  ForceType text/css
+  Header set Content-Type "text/css; charset=utf-8"
+</FilesMatch>
+
+# LiteSpeed
+<IfModule LiteSpeed>
+  AddType application/javascript .js
+  AddType text/css .css
+</IfModule>

@@ -19,3 +19,6 @@ deployment:
 
     # Copy .htaccess for SPA routing
     - /bin/cp public/.htaccess $DEPLOYPATH/.htaccess 2>/dev/null || true
+
+    # Copy assets .htaccess for MIME types
+    - /bin/cp public/assets/.htaccess $DEPLOYPATH/assets/.htaccess 2>/dev/null || true
