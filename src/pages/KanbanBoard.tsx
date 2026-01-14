@@ -515,6 +515,10 @@ export default function KanbanBoard() {
       attachments: [],
       tags: taskData.tags || [],
       xpReward: Math.round((taskData.estimatedHours || 4) * 25),
+      // Client review fields
+      clientReviewLink: undefined,
+      clientApproved: undefined,
+      clientFeedback: [],
     };
 
     addTask(newTask);

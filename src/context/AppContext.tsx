@@ -26,6 +26,7 @@ interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
   login: (userId: string) => void;
+  loginWithCredentials: (username: string, password: string) => boolean;
   logout: () => void;
 
   // Role-based access
@@ -101,8 +102,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Current user state (default to admin for demo)
-  const [currentUser, setCurrentUser] = useState<User | null>(initialUsers[0]);
+  // Current user state (start logged out - user must login)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Data state
   const [users, setUsers] = useState<User[]>(initialUsers);
@@ -122,6 +123,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = useCallback((userId: string) => {
     const user = users.find(u => u.id === userId);
     if (user) setCurrentUser(user);
+  }, [users]);
+
+  const loginWithCredentials = useCallback((username: string, password: string): boolean => {
+    const user = users.find(u => u.username === username && u.password === password);
+    if (user) {
+      setCurrentUser(user);
+      return true;
+    }
+    return false;
   }, [users]);
 
   const logout = useCallback(() => {
@@ -184,14 +194,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
   }, []);
 
-  const moveTask = useCallback((taskId: string, newStatus: TaskStatus) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        return { ...t, status: newStatus, updatedAt: new Date().toISOString() };
-      }
-      return t;
-    }));
+  // Gamification (defined before moveTask since it uses addXP)
+  const getUserLevel = useCallback((xp: number) => {
+    return levelConfigs.find(l => xp >= l.minXP && xp < l.maxXP) || levelConfigs[0];
   }, []);
+
+  const addXP = useCallback((userId: string, amount: number) => {
+    setUsers(prev => {
+      const user = prev.find(u => u.id === userId);
+      if (!user) return prev;
+
+      const newXP = user.xp + amount;
+      const newLevel = getUserLevel(newXP);
+
+      return prev.map(u => u.id === userId ? {
+        ...u,
+        xp: newXP,
+        level: newLevel.level,
+      } : u);
+    });
+
+    // Update currentUser if they're the one getting XP
+    if (currentUser?.id === userId) {
+      const newXP = currentUser.xp + amount;
+      const newLevel = getUserLevel(newXP);
+      setCurrentUser({
+        ...currentUser,
+        xp: newXP,
+        level: newLevel.level,
+      });
+    }
+  }, [getUserLevel, currentUser]);
+
+  const moveTask = useCallback((taskId: string, newStatus: TaskStatus) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const wasCompleted = task.status === 'done';
+    const isNowCompleted = newStatus === 'done';
+
+    setTasks(prev => {
+      // First update the moved task
+      let updatedTasks = prev.map(t => {
+        if (t.id === taskId) {
+          return { ...t, status: newStatus, updatedAt: new Date().toISOString() };
+        }
+        return t;
+      });
+
+      // Then update dependency locking for tasks that depend on this one
+      updatedTasks = updatedTasks.map(t => {
+        if (t.dependsOn.includes(taskId)) {
+          // Check if all dependencies are now complete
+          const allDependenciesComplete = t.dependsOn.every(depId => {
+            const depTask = updatedTasks.find(dt => dt.id === depId);
+            return depTask?.status === 'done';
+          });
+
+          // Update blockedBy and isLocked
+          const blockedBy = t.dependsOn.filter(depId => {
+            const depTask = updatedTasks.find(dt => dt.id === depId);
+            return depTask?.status !== 'done';
+          });
+
+          return {
+            ...t,
+            blockedBy,
+            isLocked: !allDependenciesComplete,
+          };
+        }
+        return t;
+      });
+
+      return updatedTasks;
+    });
+
+    // Award XP when task is moved to done (and wasn't already done)
+    if (!wasCompleted && isNowCompleted && task.assigneeId) {
+      addXP(task.assigneeId, task.xpReward);
+    }
+  }, [tasks, addXP]);
 
   const addTask = useCallback((task: Task) => {
     setTasks(prev => [...prev, task]);
@@ -290,25 +372,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   }, [currentUser]);
 
-  // Gamification
-  const getUserLevel = useCallback((xp: number) => {
-    return levelConfigs.find(l => xp >= l.minXP && xp < l.maxXP) || levelConfigs[0];
-  }, []);
-
-  const addXP = useCallback((userId: string, amount: number) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
-
-    const newXP = user.xp + amount;
-    const newLevel = getUserLevel(newXP);
-
-    updateUser({
-      ...user,
-      xp: newXP,
-      level: newLevel.level,
-    });
-  }, [users, getUserLevel, updateUser]);
-
   // ROI
   const getROIByUser = useCallback((userId: string) => {
     return employeeROI.find(r => r.userId === userId);
@@ -319,6 +382,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     currentUser,
     setCurrentUser,
     login,
+    loginWithCredentials,
     logout,
 
     // Roles

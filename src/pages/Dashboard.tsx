@@ -1,15 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Briefcase,
   CheckCircle2,
   Users,
   Calendar,
-  TrendingUp,
   Clock,
   AlertCircle,
   ArrowUpRight,
   ArrowDownRight,
-  Play,
   Zap,
   Target,
 } from 'lucide-react';
@@ -73,7 +72,7 @@ function StatCard({
   );
 }
 
-function ProjectCard({ project }: { project: any }) {
+function ProjectCard({ project, onClick }: { project: any; onClick: () => void }) {
   const { getUserById, getTasksByProject } = useApp();
   const pm = getUserById(project.pmId);
   const tasks = getTasksByProject(project.id);
@@ -87,10 +86,13 @@ function ProjectCard({ project }: { project: any }) {
     urgent: 'bg-danger-100 text-danger-600',
   };
 
-  const budgetUsage = (project.spent / project.budget) * 100;
+  const budgetUsage = project.budget > 0 ? (project.spent / project.budget) * 100 : 0;
 
   return (
-    <div className="card p-5 hover:shadow-card-hover transition-all cursor-pointer group">
+    <div
+      onClick={onClick}
+      className="card p-5 hover:shadow-card-hover transition-all cursor-pointer group"
+    >
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
@@ -140,9 +142,9 @@ function ProjectCard({ project }: { project: any }) {
       <div className="flex items-center justify-between pt-3 border-t border-surface-100">
         <div className="flex items-center gap-2">
           <div className="avatar avatar-sm">
-            {pm?.name.split(' ').map(n => n[0]).join('')}
+            {pm?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
           </div>
-          <span className="text-xs text-text-muted">{pm?.name}</span>
+          <span className="text-xs text-text-muted">{pm?.name || 'Unassigned'}</span>
         </div>
         <div className="flex items-center gap-1 text-xs text-text-muted">
           <Calendar size={12} />
@@ -153,8 +155,7 @@ function ProjectCard({ project }: { project: any }) {
   );
 }
 
-function UpcomingShoot({ shoot }: { shoot: any }) {
-  const { getUserById } = useApp();
+function UpcomingShoot({ shoot, onClick }: { shoot: any; onClick: () => void }) {
   const shootDate = parseISO(shoot.date);
   const dateLabel = isToday(shootDate)
     ? 'Today'
@@ -169,7 +170,10 @@ function UpcomingShoot({ shoot }: { shoot: any }) {
   };
 
   return (
-    <div className="flex items-start gap-4 p-4 bg-surface-50 rounded-lg hover:bg-surface-100 transition-colors">
+    <div
+      onClick={onClick}
+      className="flex items-start gap-4 p-4 bg-surface-50 rounded-lg hover:bg-surface-100 transition-colors cursor-pointer"
+    >
       <div className="flex-shrink-0 w-14 h-14 bg-primary-100 rounded-lg flex flex-col items-center justify-center">
         <span className="text-xs text-primary-500 font-medium">{format(shootDate, 'MMM')}</span>
         <span className="text-xl font-bold text-primary-600">{format(shootDate, 'd')}</span>
@@ -177,7 +181,9 @@ function UpcomingShoot({ shoot }: { shoot: any }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <h4 className="font-medium text-text-primary truncate">{shoot.title}</h4>
-          <span className={`badge ${statusColors[shoot.status]}`}>{shoot.status}</span>
+          <span className={`badge ${statusColors[shoot.status] || 'bg-surface-200 text-text-muted'}`}>
+            {shoot.status}
+          </span>
         </div>
         <p className="text-sm text-text-muted mb-2">{shoot.location.name}</p>
         <div className="flex items-center gap-4 text-xs text-text-muted">
@@ -209,11 +215,11 @@ function ActivityFeedItem({ activity, getUserById }: { activity: any; getUserByI
   return (
     <div className="flex items-start gap-3 py-3">
       <div className="avatar avatar-sm flex-shrink-0">
-        {user?.name.split(' ').map((n: string) => n[0]).join('')}
+        {user?.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-text-primary">
-          <span className="font-medium">{user?.name}</span>{' '}
+          <span className="font-medium">{user?.name || 'Unknown'}</span>{' '}
           <span className="text-text-secondary">{activity.description}</span>
         </p>
         <p className="text-xs text-text-muted mt-0.5">
@@ -226,6 +232,7 @@ function ActivityFeedItem({ activity, getUserById }: { activity: any; getUserByI
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const {
     currentUser,
     projects,
@@ -235,6 +242,7 @@ export default function Dashboard() {
     getUserById,
     isAdmin,
     isPM,
+    setSelectedTask,
   } = useApp();
 
   const activeProjects = projects.filter(p => p.status === 'active');
@@ -247,10 +255,31 @@ export default function Dashboard() {
 
   const urgentTasks = tasks.filter(
     t => t.priority === 'urgent' && t.status !== 'done'
-  ).length;
+  );
 
-  // Calculate team utilization (mock data for now)
-  const teamUtilization = 78;
+  // Calculate team utilization based on actual data
+  const teamUtilization = 78; // Would be calculated from capacity data in production
+
+  const handleViewUrgentTasks = () => {
+    navigate('/kanban');
+  };
+
+  const handleViewAllProjects = () => {
+    navigate('/projects');
+  };
+
+  const handleViewCalendar = () => {
+    navigate('/calendar');
+  };
+
+  const handleViewKanban = () => {
+    navigate('/kanban');
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    setSelectedTask(taskId);
+    navigate('/kanban');
+  };
 
   return (
     <div className="space-y-6">
@@ -258,7 +287,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">
-            Welcome back, {currentUser?.name.split(' ')[0]}!
+            Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}!
           </h1>
           <p className="text-text-muted mt-1">
             Here's what's happening at Neofox today
@@ -319,7 +348,7 @@ export default function Dashboard() {
       </div>
 
       {/* Urgent Tasks Alert */}
-      {urgentTasks > 0 && (
+      {urgentTasks.length > 0 && (
         <div className="card p-4 bg-danger-50 border border-danger-200">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-danger-100 flex items-center justify-center">
@@ -328,10 +357,12 @@ export default function Dashboard() {
             <div className="flex-1">
               <h3 className="font-semibold text-danger-700">Attention Required</h3>
               <p className="text-sm text-danger-600">
-                You have {urgentTasks} urgent task{urgentTasks > 1 ? 's' : ''} that need immediate attention
+                You have {urgentTasks.length} urgent task{urgentTasks.length > 1 ? 's' : ''} that need immediate attention
               </p>
             </div>
-            <button className="btn-danger btn-sm">View Tasks</button>
+            <button onClick={handleViewUrgentTasks} className="btn-danger btn-sm">
+              View Tasks
+            </button>
           </div>
         </div>
       )}
@@ -342,13 +373,20 @@ export default function Dashboard() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-text-primary">Active Projects</h2>
-            <button className="text-sm text-primary-500 hover:text-primary-600 font-medium">
+            <button
+              onClick={handleViewAllProjects}
+              className="text-sm text-primary-500 hover:text-primary-600 font-medium"
+            >
               View All
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeProjects.slice(0, 4).map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onClick={() => navigate('/projects')}
+              />
             ))}
           </div>
         </div>
@@ -359,14 +397,21 @@ export default function Dashboard() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-text-primary">Upcoming Shoots</h2>
-              <button className="text-sm text-primary-500 hover:text-primary-600 font-medium">
+              <button
+                onClick={handleViewCalendar}
+                className="text-sm text-primary-500 hover:text-primary-600 font-medium"
+              >
                 Calendar
               </button>
             </div>
             <div className="space-y-3">
               {upcomingShoots.length > 0 ? (
                 upcomingShoots.map((shoot) => (
-                  <UpcomingShoot key={shoot.id} shoot={shoot} />
+                  <UpcomingShoot
+                    key={shoot.id}
+                    shoot={shoot}
+                    onClick={handleViewCalendar}
+                  />
                 ))
               ) : (
                 <p className="text-sm text-text-muted text-center py-4">
@@ -399,7 +444,10 @@ export default function Dashboard() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-text-primary">My Tasks</h2>
-            <button className="text-sm text-primary-500 hover:text-primary-600 font-medium">
+            <button
+              onClick={handleViewKanban}
+              className="text-sm text-primary-500 hover:text-primary-600 font-medium"
+            >
               View Kanban
             </button>
           </div>
@@ -430,6 +478,7 @@ export default function Dashboard() {
                     {statusTasks.slice(0, 2).map((task) => (
                       <div
                         key={task.id}
+                        onClick={() => handleTaskClick(task.id)}
                         className="p-2 bg-white rounded border border-surface-200 text-sm text-text-primary truncate hover:border-primary-300 cursor-pointer transition-colors"
                       >
                         {task.title}

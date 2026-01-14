@@ -28,6 +28,7 @@ const roleConfig: Record<string, { label: string; color: string }> = {
 };
 
 const specializationConfig: Record<string, { label: string; icon: string }> = {
+  admin: { label: 'System Admin', icon: '⚙️' },
   photographer: { label: 'Photographer', icon: '📷' },
   videographer: { label: 'Videographer', icon: '🎥' },
   editor: { label: 'Editor', icon: '✂️' },

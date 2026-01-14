@@ -1,3 +1,4 @@
+export { default as Login } from './Login';
 export { default as Dashboard } from './Dashboard';
 export { default as KanbanBoard } from './KanbanBoard';
 export { default as Projects } from './Projects';

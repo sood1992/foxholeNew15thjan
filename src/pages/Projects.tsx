@@ -238,7 +238,7 @@ export default function Projects() {
             </div>
           </div>
           <p className="text-2xl font-bold text-text-primary">
-            {((stats.totalSpent / stats.totalBudget) * 100).toFixed(0)}%
+            {stats.totalBudget > 0 ? ((stats.totalSpent / stats.totalBudget) * 100).toFixed(0) : 0}%
           </p>
           <p className="text-sm text-text-muted">Budget Used</p>
         </div>

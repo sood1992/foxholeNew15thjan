@@ -45,12 +45,32 @@ export const badgeDefinitions: Badge[] = [
 ];
 
 // ============================================
-// NEOFOX TEAM - 20 EMPLOYEES
+// NEOFOX TEAM - 20 EMPLOYEES + MASTER ADMIN
 // ============================================
 export const users: User[] = [
+  // MASTER ADMIN (System Administrator)
+  {
+    id: 'u0',
+    username: 'admin',
+    password: 'password!',
+    name: 'System Admin',
+    email: 'admin@neofox.com',
+    role: 'admin',
+    specialization: 'admin',
+    hourlyRate: 0,
+    department: 'System',
+    joinedAt: '2020-01-01',
+    xp: 99999,
+    level: 10,
+    badges: [],
+    currentStreak: 0,
+    longestStreak: 0,
+  },
   // ADMIN
   {
     id: 'u1',
+    username: 'marcus',
+    password: 'marcus123',
     name: 'Marcus Chen',
     email: 'marcus@neofox.com',
     role: 'admin',

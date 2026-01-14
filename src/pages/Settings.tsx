@@ -100,7 +100,9 @@ export default function Settings() {
 
   const currentLevel = currentUser ? getUserLevel(currentUser.xp) : null;
   const xpProgress = currentUser && currentLevel
-    ? ((currentUser.xp - currentLevel.minXP) / (currentLevel.maxXP - currentLevel.minXP)) * 100
+    ? (currentLevel.maxXP === Infinity
+        ? 100
+        : ((currentUser.xp - currentLevel.minXP) / (currentLevel.maxXP - currentLevel.minXP)) * 100)
     : 0;
 
   const handleSaveProfile = () => {
@@ -171,7 +173,7 @@ export default function Settings() {
               <h2 className="text-xl font-bold text-text-primary">{currentUser.name}</h2>
               <span className="badge-primary capitalize">{currentUser.role}</span>
             </div>
-            <p className="text-text-muted capitalize">{currentUser.specialization.replace('_', ' ')}</p>
+            <p className="text-text-muted capitalize">{(currentUser.specialization || 'employee').replace('_', ' ')}</p>
             <p className="text-sm text-text-muted">{currentUser.department}</p>
 
             <div className="flex items-center gap-4 mt-4">

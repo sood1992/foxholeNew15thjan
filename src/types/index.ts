@@ -18,11 +18,16 @@ export type Specialization =
 // User/Employee
 export interface User {
   id: string;
+  username?: string; // For login
+  password?: string; // Hashed in production, plain for demo
   name: string;
   email: string;
   avatar?: string;
+  phone?: string;
+  location?: string;
+  bio?: string;
   role: UserRole;
-  specialization: Specialization;
+  specialization: Specialization | 'admin';
   hourlyRate: number; // Cost per hour
   department: string;
   joinedAt: string;
