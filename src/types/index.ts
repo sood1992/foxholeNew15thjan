@@ -74,6 +74,37 @@ export interface Project {
 // Task status for Kanban
 export type TaskStatus = 'backlog' | 'raw' | 'in_progress' | 'review' | 'client_review' | 'done';
 
+// Dependency type for advanced workflow
+export type DependencyType = 'finish_to_start' | 'start_to_start' | 'finish_to_finish';
+
+// Auto-assignment strategy
+export type AutoAssignStrategy = 'least_busy' | 'round_robin' | 'highest_skill' | 'manual';
+
+// Task Comment for collaboration
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  userId: string;
+  content: string;
+  mentions: string[]; // User IDs mentioned with @
+  createdAt: string;
+  updatedAt: string;
+  parentId?: string; // For threaded replies
+  isEdited: boolean;
+}
+
+// Visual Annotation for creative review
+export interface VisualAnnotation {
+  id: string;
+  attachmentId: string;
+  position: { x: number; y: number };
+  timestamp?: number; // For video annotations (in seconds)
+  userId: string;
+  comment: string;
+  status: 'open' | 'resolved';
+  createdAt: string;
+}
+
 // Task
 export interface Task {
   id: string;
@@ -82,27 +113,114 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  assigneeId: string;
+  // Multi-assignee support
+  assigneeId: string; // Primary assignee (backwards compatible)
+  assigneeIds?: string[]; // All assignees for collaborative tasks (optional for backwards compat)
   creatorId: string;
+  // Watchers/followers
+  watchers?: string[]; // User IDs watching this task
   estimatedHours: number;
   loggedHours: number;
   dueDate: string;
   createdAt: string;
   updatedAt: string;
-  // Dependencies (Task Locking)
+  // Advanced Dependencies
   dependsOn: string[]; // Task IDs this task depends on
+  dependencyType?: DependencyType; // Type of dependency (defaults to finish_to_start)
   blockedBy: string[]; // Computed: tasks that are blocking this
   isLocked: boolean; // Computed: true if any dependency is incomplete
+  // Auto-routing
+  nextAssigneeId?: string; // Who gets this task when current stage completes
+  autoAssignStrategy?: AutoAssignStrategy;
+  requiredRole?: Specialization; // Role needed for this task
   // Client review
   clientReviewLink?: string;
   clientApproved?: boolean;
   clientFeedback?: string[];
+  // Comments
+  comments?: TaskComment[]; // Optional for backwards compat
   // Attachments
   attachments: Attachment[];
   // Tags
   tags: string[];
   // XP value
   xpReward: number;
+  // Workflow template reference
+  workflowTemplateId?: string;
+  workflowStageId?: string;
+}
+
+// Workflow Template for automating task flow
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  projectType: 'video' | 'photo' | 'marketing' | 'strategy' | 'mixed';
+  stages: WorkflowStage[];
+  createdBy: string;
+  createdAt: string;
+  isDefault: boolean;
+}
+
+// Workflow Stage within a template
+export interface WorkflowStage {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+  role: Specialization; // Auto-assign to team member with this role
+  estimatedHours: number;
+  dependsOnStageId?: string; // Previous stage this depends on
+  autoStartWhenUnblocked: boolean;
+  autoAssignStrategy: AutoAssignStrategy;
+  defaultStatus: TaskStatus;
+  xpReward: number;
+}
+
+// Digital Asset for Asset Library
+export interface DigitalAsset {
+  id: string;
+  name: string;
+  type: 'photo' | 'video' | 'design' | 'document' | 'audio' | 'raw_footage';
+  fileSize: number;
+  format: string; // .mp4, .psd, .ai, .raw, etc.
+  thumbnail: string;
+  previewUrl: string;
+  downloadUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  projectId: string;
+  taskId?: string;
+  // Metadata
+  dimensions?: { width: number; height: number };
+  duration?: number; // For video/audio in seconds
+  camera?: string;
+  // Organization
+  tags: string[];
+  collections: string[];
+  isArchived: boolean;
+  // Version Control
+  version: number;
+  versionOf?: string; // Parent asset ID
+  // Usage Rights
+  license?: string;
+  usageRights: 'internal' | 'client' | 'public';
+}
+
+// Project Health metrics for PM dashboard
+export interface ProjectHealth {
+  projectId: string;
+  budgetHealth: 'green' | 'yellow' | 'red'; // Based on burn rate
+  scheduleHealth: 'green' | 'yellow' | 'red'; // Based on task progress
+  teamHealth: 'green' | 'yellow' | 'red'; // Based on workload
+  overallHealth: 'green' | 'yellow' | 'red';
+  tasksOnTrack: number;
+  tasksAtRisk: number;
+  tasksOverdue: number;
+  budgetRemaining: number;
+  daysRemaining: number;
+  blockedTasks: number;
+  predictedCompletionDate: string;
 }
 
 // Attachment

@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import CommandPalette from '../CommandPalette';
 import { useApp } from '../../context/AppContext';
 
 export default function Layout() {
@@ -35,6 +36,8 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      {/* Command Palette - accessible via Cmd/Ctrl + K */}
+      <CommandPalette />
     </div>
   );
 }

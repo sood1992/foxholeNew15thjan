@@ -7,18 +7,24 @@ import {
   TimeEntry,
   Notification,
   TaskStatus,
-  UserRole
+  UserRole,
+  TaskComment,
+  WorkflowTemplate,
+  Specialization,
+  ProjectHealth
 } from '../types';
 import {
   users as initialUsers,
   projects as initialProjects,
-  tasks as initialTasks,
+  enhancedTasks as initialTasks,
   shootEvents as initialShootEvents,
   timeEntries as initialTimeEntries,
   notifications as initialNotifications,
   levelConfigs,
   employeeROI,
   activityFeed as initialActivityFeed,
+  workflowTemplates as initialWorkflowTemplates,
+  sampleComments,
 } from '../data/sampleData';
 
 interface AppContextType {
@@ -56,6 +62,22 @@ interface AppContextType {
   updateTask: (task: Task) => void;
   moveTask: (taskId: string, newStatus: TaskStatus) => void;
   addTask: (task: Task) => void;
+
+  // Task Collaboration
+  addTaskComment: (taskId: string, content: string, mentions: string[]) => void;
+  addTaskWatcher: (taskId: string, userId: string) => void;
+  removeTaskWatcher: (taskId: string, userId: string) => void;
+  addTaskAssignee: (taskId: string, userId: string) => void;
+  removeTaskAssignee: (taskId: string, userId: string) => void;
+
+  // Workflow Templates
+  workflowTemplates: WorkflowTemplate[];
+  getWorkflowByType: (type: string) => WorkflowTemplate | undefined;
+  createTasksFromWorkflow: (projectId: string, templateId: string) => void;
+  getLeastBusyUser: (role: Specialization) => User | undefined;
+
+  // Project Health
+  getProjectHealth: (projectId: string) => ProjectHealth;
 
   // Shoot Events
   shootEvents: ShootEvent[];
@@ -279,6 +301,288 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTasks(prev => [...prev, task]);
   }, []);
 
+  // Task Collaboration functions
+  const addTaskComment = useCallback((taskId: string, content: string, mentions: string[]) => {
+    if (!currentUser) return;
+
+    const newComment: TaskComment = {
+      id: `c-${Date.now()}`,
+      taskId,
+      userId: currentUser.id,
+      content,
+      mentions,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isEdited: false,
+    };
+
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          comments: [...(t.comments || []), newComment],
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      return t;
+    }));
+
+    // Create notifications for mentioned users
+    mentions.forEach(userId => {
+      if (userId !== currentUser.id) {
+        const newNotification: Notification = {
+          id: `n-${Date.now()}-${userId}`,
+          userId,
+          type: 'mention',
+          title: 'You were mentioned',
+          message: `${currentUser.name} mentioned you in a comment`,
+          link: `/kanban?task=${taskId}`,
+          read: false,
+          createdAt: new Date().toISOString(),
+        };
+        setNotifications(prev => [...prev, newNotification]);
+      }
+    });
+  }, [currentUser]);
+
+  const addTaskWatcher = useCallback((taskId: string, userId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId && !t.watchers?.includes(userId)) {
+        return {
+          ...t,
+          watchers: [...(t.watchers || []), userId],
+        };
+      }
+      return t;
+    }));
+  }, []);
+
+  const removeTaskWatcher = useCallback((taskId: string, userId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          watchers: (t.watchers || []).filter(id => id !== userId),
+        };
+      }
+      return t;
+    }));
+  }, []);
+
+  const addTaskAssignee = useCallback((taskId: string, userId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId && !t.assigneeIds?.includes(userId)) {
+        const newAssigneeIds = [...(t.assigneeIds || [t.assigneeId]), userId];
+        return {
+          ...t,
+          assigneeIds: newAssigneeIds,
+          // Also add as watcher
+          watchers: [...new Set([...(t.watchers || []), userId])],
+        };
+      }
+      return t;
+    }));
+
+    // Notify the new assignee
+    if (currentUser && userId !== currentUser.id) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        const newNotification: Notification = {
+          id: `n-${Date.now()}`,
+          userId,
+          type: 'task_assigned',
+          title: 'Added to Task',
+          message: `${currentUser.name} added you to "${task.title}"`,
+          link: `/kanban?task=${taskId}`,
+          read: false,
+          createdAt: new Date().toISOString(),
+        };
+        setNotifications(prev => [...prev, newNotification]);
+      }
+    }
+  }, [currentUser, tasks]);
+
+  const removeTaskAssignee = useCallback((taskId: string, userId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const newAssigneeIds = (t.assigneeIds || []).filter(id => id !== userId);
+        return {
+          ...t,
+          assigneeIds: newAssigneeIds,
+          // Update primary assignee if removed
+          assigneeId: newAssigneeIds[0] || t.assigneeId,
+        };
+      }
+      return t;
+    }));
+  }, []);
+
+  // Workflow Templates
+  const [workflowTemplates] = useState<WorkflowTemplate[]>(initialWorkflowTemplates);
+
+  const getWorkflowByType = useCallback((type: string) => {
+    return workflowTemplates.find(w => w.projectType === type && w.isDefault);
+  }, [workflowTemplates]);
+
+  const getLeastBusyUser = useCallback((role: Specialization): User | undefined => {
+    const usersWithRole = users.filter(u => u.specialization === role);
+    if (usersWithRole.length === 0) return undefined;
+
+    // Count active tasks for each user
+    const userTaskCounts = usersWithRole.map(user => {
+      const activeTasks = tasks.filter(
+        t => t.assigneeIds?.includes(user.id) && t.status !== 'done'
+      ).length;
+      return { user, activeTasks };
+    });
+
+    // Return user with fewest active tasks
+    userTaskCounts.sort((a, b) => a.activeTasks - b.activeTasks);
+    return userTaskCounts[0]?.user;
+  }, [users, tasks]);
+
+  const createTasksFromWorkflow = useCallback((projectId: string, templateId: string) => {
+    const template = workflowTemplates.find(w => w.id === templateId);
+    if (!template || !currentUser) return;
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const newTasks: Task[] = [];
+    const stageToTaskId: Record<string, string> = {};
+
+    // Create tasks for each stage
+    template.stages.forEach((stage, index) => {
+      const taskId = `t-${Date.now()}-${index}`;
+      stageToTaskId[stage.id] = taskId;
+
+      // Find assignee based on strategy
+      let assignee: User | undefined;
+      if (stage.autoAssignStrategy === 'least_busy') {
+        assignee = getLeastBusyUser(stage.role);
+      } else if (stage.autoAssignStrategy === 'highest_skill') {
+        // Get user with highest XP in that role
+        const usersWithRole = users.filter(u => u.specialization === stage.role);
+        assignee = usersWithRole.sort((a, b) => b.xp - a.xp)[0];
+      }
+
+      const dependsOnTaskId = stage.dependsOnStageId ? stageToTaskId[stage.dependsOnStageId] : undefined;
+
+      const newTask: Task = {
+        id: taskId,
+        projectId,
+        title: stage.name,
+        description: stage.description,
+        status: index === 0 ? stage.defaultStatus : 'backlog',
+        priority: 'medium',
+        assigneeId: assignee?.id || project.pmId,
+        assigneeIds: assignee ? [assignee.id] : [project.pmId],
+        creatorId: currentUser.id,
+        watchers: [currentUser.id, assignee?.id || project.pmId].filter(Boolean) as string[],
+        estimatedHours: stage.estimatedHours,
+        loggedHours: 0,
+        dueDate: project.dueDate,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        dependsOn: dependsOnTaskId ? [dependsOnTaskId] : [],
+        dependencyType: 'finish_to_start',
+        blockedBy: dependsOnTaskId ? [dependsOnTaskId] : [],
+        isLocked: !!dependsOnTaskId,
+        requiredRole: stage.role,
+        autoAssignStrategy: stage.autoAssignStrategy,
+        comments: [],
+        attachments: [],
+        tags: [template.name.toLowerCase().replace(/\s+/g, '-')],
+        xpReward: stage.xpReward,
+        workflowTemplateId: template.id,
+        workflowStageId: stage.id,
+      };
+
+      newTasks.push(newTask);
+    });
+
+    // Add all tasks at once
+    setTasks(prev => [...prev, ...newTasks]);
+  }, [workflowTemplates, currentUser, projects, users, getLeastBusyUser]);
+
+  // Project Health calculation
+  const getProjectHealth = useCallback((projectId: string): ProjectHealth => {
+    const project = projects.find(p => p.id === projectId);
+    const projectTasks = tasks.filter(t => t.projectId === projectId);
+
+    if (!project) {
+      return {
+        projectId,
+        budgetHealth: 'red',
+        scheduleHealth: 'red',
+        teamHealth: 'red',
+        overallHealth: 'red',
+        tasksOnTrack: 0,
+        tasksAtRisk: 0,
+        tasksOverdue: 0,
+        budgetRemaining: 0,
+        daysRemaining: 0,
+        blockedTasks: 0,
+        predictedCompletionDate: new Date().toISOString(),
+      };
+    }
+
+    const today = new Date();
+    const dueDate = new Date(project.dueDate);
+    const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Budget health
+    const budgetUsed = project.spent / project.budget;
+    const budgetHealth = budgetUsed > 0.9 ? 'red' : budgetUsed > 0.7 ? 'yellow' : 'green';
+
+    // Task analysis
+    const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+    const blockedTasks = projectTasks.filter(t => t.isLocked).length;
+    const overdueTasks = projectTasks.filter(t => {
+      if (t.status === 'done') return false;
+      const taskDue = new Date(t.dueDate);
+      return taskDue < today;
+    }).length;
+    const atRiskTasks = projectTasks.filter(t => {
+      if (t.status === 'done') return false;
+      const taskDue = new Date(t.dueDate);
+      const daysToTaskDue = Math.ceil((taskDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return daysToTaskDue <= 2 && daysToTaskDue >= 0;
+    }).length;
+
+    // Schedule health
+    const progressPercent = projectTasks.length > 0 ? completedTasks / projectTasks.length : 0;
+    const timeElapsedPercent = 1 - (daysRemaining / 30); // Assuming 30-day projects
+    const scheduleHealth = overdueTasks > 2 || progressPercent < timeElapsedPercent - 0.2
+      ? 'red'
+      : atRiskTasks > 0 || blockedTasks > 2
+        ? 'yellow'
+        : 'green';
+
+    // Team health (based on blocked tasks and overdue)
+    const teamHealth = blockedTasks > 3 ? 'red' : blockedTasks > 1 ? 'yellow' : 'green';
+
+    // Overall health
+    const healthScores = { green: 0, yellow: 1, red: 2 };
+    const avgScore = (healthScores[budgetHealth] + healthScores[scheduleHealth] + healthScores[teamHealth]) / 3;
+    const overallHealth = avgScore >= 1.5 ? 'red' : avgScore >= 0.5 ? 'yellow' : 'green';
+
+    return {
+      projectId,
+      budgetHealth,
+      scheduleHealth,
+      teamHealth,
+      overallHealth,
+      tasksOnTrack: projectTasks.length - overdueTasks - atRiskTasks - blockedTasks,
+      tasksAtRisk: atRiskTasks,
+      tasksOverdue: overdueTasks,
+      budgetRemaining: project.budget - project.spent,
+      daysRemaining,
+      blockedTasks,
+      predictedCompletionDate: dueDate.toISOString(),
+    };
+  }, [projects, tasks]);
+
   // Shoot Event functions
   const getShootEventById = useCallback((id: string) => shootEvents.find(s => s.id === id), [shootEvents]);
 
@@ -412,6 +716,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     updateTask,
     moveTask,
     addTask,
+
+    // Task Collaboration
+    addTaskComment,
+    addTaskWatcher,
+    removeTaskWatcher,
+    addTaskAssignee,
+    removeTaskAssignee,
+
+    // Workflow Templates
+    workflowTemplates,
+    getWorkflowByType,
+    createTasksFromWorkflow,
+    getLeastBusyUser,
+
+    // Project Health
+    getProjectHealth,
 
     // Shoots
     shootEvents,

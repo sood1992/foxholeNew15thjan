@@ -495,6 +495,9 @@ export default function KanbanBoard() {
   };
 
   const handleCreateTask = (taskData: Partial<Task>) => {
+    const assigneeId = taskData.assigneeId || currentUser?.id || '';
+    const creatorId = currentUser?.id || '';
+
     const newTask: Task = {
       id: `t-${Date.now()}`,
       projectId: taskData.projectId || projects[0]?.id || '',
@@ -502,16 +505,20 @@ export default function KanbanBoard() {
       description: taskData.description || '',
       status: taskData.status || 'backlog',
       priority: taskData.priority || 'medium',
-      assigneeId: taskData.assigneeId || currentUser?.id || '',
-      creatorId: currentUser?.id || '',
+      assigneeId,
+      assigneeIds: [assigneeId], // Multi-assignee support
+      creatorId,
+      watchers: [creatorId, assigneeId].filter((id, i, arr) => arr.indexOf(id) === i), // Task watchers
       estimatedHours: taskData.estimatedHours || 4,
       loggedHours: 0,
       dueDate: taskData.dueDate || '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      dependsOn: [],
+      dependsOn: taskData.dependsOn || [],
+      dependencyType: 'finish_to_start',
       blockedBy: [],
       isLocked: false,
+      comments: [], // Comments support
       attachments: [],
       tags: taskData.tags || [],
       xpReward: Math.round((taskData.estimatedHours || 4) * 25),
